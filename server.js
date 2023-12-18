@@ -13,19 +13,48 @@ const app = require('./app');
 const {PORT,DATABASE_NAME, HOST_URL, DATABASE_USERNAME, DATABASE_PASSWORD} = process.env
 const connection = mysql.createConnection({
   host: HOST_URL,
+  port: PORT,
   user: DATABASE_USERNAME,
   password: DATABASE_PASSWORD,
   database: DATABASE_NAME,
-  port: PORT
+  ssl: "Amazon RDS"
 });
 
-console.log(process.env.DATABASE_NAME);
+connection.connect((err) => {
+  if (err) {
+    console.error('error connecting: ' + err.stack);
+    return;
+  }
 
-connection.connect();
+  const port = process.env.PORT || 3000;
+  const server = app.listen(port, () => {
+    console.log(`App running on port ${port}`);
+  });
+  console.log('connected as id ' + connection.threadId);
 
-connection.query("SELECT 1 + 1 AS solution", function (error, results, fields) {
-  if (error) throw error;
-  console.log("The solution is: ", results[0].solution);
+  const queryString = 'SELECT * FROM your_table_name';
+  connection.query(queryString, (err, results, fields) => {
+    if (err) {
+      console.error('Error executing query:', err);
+      return;
+    }
+  
+    console.log('Query results:', results);
+
+    // Close the connection after the query is executed
+    connection.end((err) => {
+      if (err) {
+        console.error('Error closing connection:', err);
+      }
+      console.log('Connection closed');
+    });
+  });
 });
 
-connection.end();
+// process.on('unhandledRejection', (err) => {
+//   console.log('UNHANDLED REJECTION! Shutting down...');
+//   console.log(err.name, err.message);
+//   server.close(() => {
+//     process.exit(1);
+//   });
+// });
